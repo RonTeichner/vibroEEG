@@ -1,3 +1,4 @@
+from scipy import signal as scipySignal
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -57,4 +58,46 @@ plt.xlabel('sec')
 plt.ylabel('dbm')
 plt.legend()
 plt.grid(True)
+#plt.show()
+
+plt.figure()
+fVec, Pxx_den = scipySignal.welch(signal_with_noise, fs, scaling='density', return_onesided=True)
+plt.plot(fVec, watt2dbm(Pxx_den))
+plt.xlabel('hz')
+plt.ylabel('dbm / hz')
+plt.grid(True)
+plt.title('power spectral density')
+#plt.show()
+
+signalEstMaxPower_dbm = np.max(watt2dbm(Pxx_den))
+noiseEstPower_dbm = watt2dbm(np.median(Pxx_den)) + watt2db(fVec.size)
+# assumption (based on me knowing that the signal is sin): every bin with energy
+# above noiseEstPower_dbm + 0.5*(signalEstMaxPower_dbm - noiseEstPower_dbm) contributes to the signals power
+threshold = noiseEstPower_dbm + 0.5*(signalEstMaxPower_dbm - noiseEstPower_dbm)
+print(f'threshold is at {threshold} dbm')
+signalEstPower_dbm = watt2dbm(Pxx_den[np.where(watt2dbm(Pxx_den) > threshold)].sum())
+estSNR_db = signalEstPower_dbm - noiseEstPower_dbm
+print(f'Estimated signal power is {signalEstPower_dbm}')
+print(f'Estimated noise power is {noiseEstPower_dbm}')
+print(f'Estimated SNR is {estSNR_db}')
+
+
 plt.show()
+'''
+nFft = 256
+fftRes = fs/nFft
+print(f'fft resolution is {fftRes} Hz')
+
+nComplete_fftCycles = np.floor(tVec.size/nFft)
+nSamplesForFft = int(nFft*nComplete_fftCycles)
+overlapSig = np.sum(np.reshape(signal_with_noise[:nSamplesForFft], (-1, nFft)), axis=0)
+
+sp_dbm = volt2dbm(np.abs(np.fft.fft(overlapSig)))
+fVec = np.fft.fftfreq(nFft, 1/fs)
+
+plt.plot(fVec, sp_dbm)
+plt.xlabel('hz')
+plt.ylabel('dbm')
+plt.grid(True)
+plt.show()
+'''
